@@ -1,0 +1,67 @@
+import { useAuth } from "@/hooks/useAuth";
+import Calendar from "@/components/calendar/Calendar";
+import TodoPanel from "@/components/todos/TodoPanel";
+import AiInput from "@/components/AiInput";
+import GoogleCalendarSync from "@/components/GoogleCalendarSync";
+import { Button } from "@/components/ui/button";
+import { LogOut, Calendar as CalendarIcon } from "lucide-react";
+
+export default function Home() {
+  const { user, signOut } = useAuth();
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-pink-200 bg-gradient-to-r from-pink-50 to-white">
+        <div className="container mx-auto px-2 md:px-4 h-14 md:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <CalendarIcon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+            <h1 className="text-lg md:text-xl font-bold">Planner</h1>
+          </div>
+          <div className="flex items-center gap-2 md:gap-4">
+            <GoogleCalendarSync />
+            {user && (
+              <div className="flex items-center gap-2">
+                {user.profileImageUrl && (
+                  <img
+                    src={user.profileImageUrl}
+                    alt={user.name || "User"}
+                    className="h-7 w-7 md:h-8 md:w-8 rounded-full"
+                  />
+                )}
+                <span className="text-sm font-medium hidden md:inline">
+                  {user.name || user.email}
+                </span>
+              </div>
+            )}
+            <Button variant="ghost" size="icon" onClick={signOut} title="Sign out" className="h-8 w-8 md:h-10 md:w-10">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="container mx-auto px-2 md:px-4 py-3 md:py-6">
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 md:gap-6">
+          {/* Calendar - takes up 3/4 on large screens */}
+          <div className="lg:col-span-3 h-[calc(100vh-12rem)] md:h-[calc(100vh-10rem)]">
+            <Calendar />
+          </div>
+
+          {/* Todo panel - takes up 1/4 on large screens, collapsible on mobile */}
+          <div className="lg:col-span-1 h-64 md:h-auto overflow-hidden">
+            <TodoPanel />
+          </div>
+        </div>
+      </main>
+
+      {/* Floating AI Input - bottom right on desktop, bottom center on mobile */}
+      <div className="fixed bottom-3 md:bottom-6 left-3 right-3 md:left-auto md:right-6 md:w-96 z-50">
+        <div className="bg-white rounded-xl shadow-2xl border-2 border-pink-200 p-3 md:p-4">
+          <AiInput />
+        </div>
+      </div>
+    </div>
+  );
+}
