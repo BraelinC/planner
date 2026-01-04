@@ -1,0 +1,30 @@
+{
+  "name": "@healthymama/convex",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./_generated/api.js",
+  "types": "./_generated/api.d.ts",
+  "scripts": {
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.2",
+    "@ai-sdk/openai-compatible": "^2.0.2",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "ai": "^6.0.6",
+    "convex": "^1.31.0",
+    "openai": "^6.15.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@healthymama/tsconfig": "workspace:*"
+  },
+  "exports": {
+    ".": "./_generated/api.js",
+    "./api": "./_generated/api.js",
+    "./dataModel": "./_generated/dataModel.d.ts",
+    "./server": "./_generated/server.js"
+  }
+}

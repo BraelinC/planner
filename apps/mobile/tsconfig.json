@@ -1,0 +1,27 @@
+{
+  "extends": "@healthymama/tsconfig/react-native.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@healthymama/convex": [
+        "../../packages/convex/_generated/api"
+      ],
+      "@healthymama/convex/*": [
+        "../../packages/convex/*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

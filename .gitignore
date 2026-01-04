@@ -4,12 +4,38 @@ node_modules/
 # Environment
 .env.local
 .env
+.env.*.local
 
 # Build output
 dist/
+build/
 
 # Vite
 .vite/
+
+# Turbo
+.turbo/
+
+# Expo
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Android
+apps/mobile/android/
+*.apk
+*.aab
+
+# iOS (not used but good to have)
+apps/mobile/ios/
+*.ipa
+
+# Metro
+.metro-health-check*
 
 # IDE
 .idea/
@@ -20,3 +46,12 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
