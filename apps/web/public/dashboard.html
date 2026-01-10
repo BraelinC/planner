@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Dashboard</title>
+  <script src="https://unpkg.com/convex@1.31.0/dist/browser.bundle.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      color: #eee;
+      min-height: 100vh;
+    }
+    .header {
+      background: rgba(0,0,0,0.3);
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .header h1 { font-size: 1.5rem; color: #00d9ff; }
+    .header .status { display: flex; gap: 15px; align-items: center; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-dot.connected { background: #4ade80; animation: pulse 2s infinite; }
+    .status-dot.disconnected { background: #f87171; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .container { display: grid; grid-template-columns: 320px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 60px); }
+
+    .sidebar { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+
+    .panel {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .panel-header {
+      background: rgba(0,217,255,0.1);
+      padding: 12px 15px;
+      font-weight: 600;
+      color: #00d9ff;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-body { padding: 15px; }
+
+    .instance {
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-left: 3px solid #4ade80;
+    }
+    .instance.offline { border-left-color: #666; opacity: 0.6; }
+    .instance.idle { border-left-color: #fbbf24; }
+    .instance-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .instance-name { font-weight: 600; color: #fff; }
+    .instance-status { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; background: rgba(74,222,128,0.2); color: #4ade80; }
+    .instance.offline .instance-status { background: rgba(102,102,102,0.2); color: #888; }
+    .instance.idle .instance-status { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .instance-stats { font-size: 0.85rem; color: #aaa; }
+
+    .main { display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
+
+    .command-bar { display: flex; gap: 10px; }
+    .command-bar input {
+      flex: 1;
+      padding: 12px 15px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .command-bar input:focus { outline: none; border-color: #00d9ff; }
+    .command-bar button {
+      padding: 12px 20px;
+      background: #00d9ff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .quick-btn {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .quick-btn:hover { background: rgba(0,217,255,0.2); border-color: #00d9ff; }
+
+    .tasks-container { flex: 1; overflow-y: auto; }
+
+    .task {
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-left: 3px solid #666;
+    }
+    .task.pending { border-left-color: #fbbf24; }
+    .task.in_progress { border-left-color: #00d9ff; }
+    .task.completed { border-left-color: #4ade80; }
+
+    .task-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .task-title { font-weight: 500; flex: 1; }
+    .task.completed .task-title { text-decoration: line-through; opacity: 0.7; }
+
+    .task-badges { display: flex; gap: 5px; margin-bottom: 8px; }
+    .badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+    .badge.high { background: rgba(248,113,113,0.2); color: #f87171; }
+    .badge.medium { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .badge.low { background: rgba(74,222,128,0.2); color: #4ade80; }
+    .badge.category { background: rgba(96,165,250,0.2); color: #60a5fa; }
+
+    .task-meta { font-size: 0.8rem; color: #888; margin-bottom: 8px; }
+    .task-actions { display: flex; gap: 5px; }
+    .task-action {
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 4px;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .task-action:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .task-action.delete:hover { background: rgba(248,113,113,0.3); color: #f87171; }
+
+    .add-task-form { margin-bottom: 15px; }
+    .add-task-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .add-task-row input, .add-task-row select {
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+    }
+    .add-task-row input { flex: 1; }
+    .add-task-row select { min-width: 100px; }
+    .add-task-row button {
+      padding: 10px 15px;
+      background: #4ade80;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .output-log {
+      background: rgba(0,0,0,0.4);
+      border-radius: 8px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .log-line { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .log-line.cmd { color: #00d9ff; }
+    .log-line.out { color: #4ade80; }
+    .log-line.err { color: #f87171; }
+    .log-line.info { color: #60a5fa; }
+
+    .refresh-btn {
+      background: none;
+      border: none;
+      color: #00d9ff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .register-form { display: flex; gap: 10px; margin-top: 10px; }
+    .register-form input {
+      flex: 1;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+    }
+    .register-form button {
+      padding: 8px 12px;
+      background: #00d9ff;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
+    .filter-btn {
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .filter-btn.active { border-color: #00d9ff; color: #00d9ff; background: rgba(0,217,255,0.1); }
+
+    .empty-state { text-align: center; padding: 30px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Claude Dashboard</h1>
+    <div class="status">
+      <span id="connection-status">Connecting...</span>
+      <div class="status-dot" id="status-dot"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <!-- Active Instances -->
+      <div class="panel">
+        <div class="panel-header">
+          Active Instances
+          <button class="refresh-btn" onclick="loadInstances()">↻</button>
+        </div>
+        <div class="panel-body">
+          <div id="instances">
+            <div class="empty-state">Loading...</div>
+          </div>
+          <div class="register-form">
+            <input type="text" id="instance-name" placeholder="Instance name" />
+            <button onclick="registerInstance()">Register</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Log -->
+      <div class="panel">
+        <div class="panel-header">
+          Output Log
+          <button class="refresh-btn" onclick="clearLog()">Clear</button>
+        </div>
+        <div class="panel-body">
+          <div class="output-log" id="output-log">
+            <div class="log-line info">[System] Initializing...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- Command Center -->
+      <div class="panel">
+        <div class="panel-header">Command Center</div>
+        <div class="panel-body">
+          <div class="command-bar">
+            <input type="text" id="command-input" placeholder="Enter command (click 500,300 | type 'text' | screenshot)" />
+            <button onclick="runCommand()">Run</button>
+          </div>
+          <div class="quick-actions" style="margin-top: 15px;">
+            <button class="quick-btn" onclick="quickCmd('screenshot')">Screenshot</button>
+            <button class="quick-btn" onclick="quickCmd('click 640,360')">Click Center</button>
+            <button class="quick-btn" onclick="quickCmd('scroll 300')">Scroll</button>
+            <button class="quick-btn" onclick="quickCmd('press Enter')">Enter</button>
+            <button class="quick-btn" onclick="quickCmd('press Tab')">Tab</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tasks -->
+      <div class="panel" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="panel-header">
+          Claude Tasks
+          <button class="refresh-btn" onclick="loadTasks()">↻</button>
+        </div>
+        <div class="panel-body" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+          <div class="add-task-form">
+            <div class="add-task-row">
+              <input type="text" id="new-task-title" placeholder="Task title..." />
+              <select id="new-task-priority">
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="low">Low</option>
+              </select>
+              <input type="text" id="new-task-category" placeholder="Category" style="width: 120px;" />
+              <button onclick="addTask()">Add Task</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <button class="filter-btn active" data-filter="all" onclick="filterTasks('all')">All</button>
+            <button class="filter-btn" data-filter="pending" onclick="filterTasks('pending')">Pending</button>
+            <button class="filter-btn" data-filter="in_progress" onclick="filterTasks('in_progress')">In Progress</button>
+            <button class="filter-btn" data-filter="completed" onclick="filterTasks('completed')">Completed</button>
+          </div>
+          <div class="tasks-container" id="tasks">
+            <div class="empty-state">Loading tasks...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Convex setup
+    const CONVEX_URL = localStorage.getItem('convex_url') || 'https://placeholder.convex.cloud';
+    let convex = null;
+    let tasks = [];
+    let instances = [];
+    let currentFilter = 'all';
+
+    // Initialize Convex
+    async function initConvex() {
+      try {
+        // For demo, use localStorage mock if no real Convex
+        if (CONVEX_URL.includes('placeholder')) {
+          log('Using local storage (no Convex URL configured)', 'info');
+          setConnected(false);
+          loadLocalData();
+          return;
+        }
+
+        convex = new Convex.ConvexHttpClient(CONVEX_URL);
+        setConnected(true);
+        log('Connected to Convex', 'out');
+        await loadTasks();
+        await loadInstances();
+      } catch (err) {
+        log('Convex connection failed: ' + err.message, 'err');
+        setConnected(false);
+        loadLocalData();
+      }
+    }
+
+    function setConnected(connected) {
+      document.getElementById('connection-status').textContent = connected ? 'Connected' : 'Local Mode';
+      document.getElementById('status-dot').className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+    }
+
+    // Local storage fallback
+    function loadLocalData() {
+      tasks = JSON.parse(localStorage.getItem('claude-tasks') || '[]');
+      instances = JSON.parse(localStorage.getItem('claude-instances') || '[]');
+      renderTasks();
+      renderInstances();
+    }
+
+    function saveLocalData() {
+      localStorage.setItem('claude-tasks', JSON.stringify(tasks));
+      localStorage.setItem('claude-instances', JSON.stringify(instances));
+    }
+
+    // Logging
+    function log(message, type = 'out') {
+      const logEl = document.getElementById('output-log');
+      const line = document.createElement('div');
+      line.className = 'log-line ' + type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('output-log').innerHTML = '<div class="log-line info">[System] Log cleared</div>';
+    }
+
+    // Tasks
+    async function loadTasks() {
+      try {
+        if (convex) {
+          tasks = await convex.query('dashboard:listTasks', {});
+        }
+        renderTasks();
+      } catch (err) {
+        log('Failed to load tasks: ' + err.message, 'err');
+      }
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasks');
+      const filtered = currentFilter === 'all' ? tasks : tasks.filter(t => t.status === currentFilter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">No tasks</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(task => `
+        <div class="task ${task.status}">
+          <div class="task-header">
+            <div class="task-title">${task.title}</div>
+          </div>
+          <div class="task-badges">
+            <span class="badge ${task.priority}">${task.priority}</span>
+            ${task.category ? `<span class="badge category">${task.category}</span>` : ''}
+          </div>
+          <div class="task-meta">
+            ${task.status} | ${task.createdBy ? 'by ' + task.createdBy + ' | ' : ''}${new Date(task.createdAt).toLocaleString()}
+          </div>
+          <div class="task-actions">
+            <button class="task-action" onclick="setStatus('${task._id || task.id}', 'pending')">⏸ Pending</button>
+            <button class="task-action" onclick="setStatus('${task._id || task.id}', 'in_progress')">▶ Start</button>
+            <button class="task-action" onclick="setStatus('${task._id || task.id}', 'completed')">✓ Done</button>
+            <button class="task-action delete" onclick="deleteTask('${task._id || task.id}')">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function addTask() {
+      const title = document.getElementById('new-task-title').value.trim();
+      const priority = document.getElementById('new-task-priority').value;
+      const category = document.getElementById('new-task-category').value.trim();
+
+      if (!title) return;
+
+      try {
+        if (convex) {
+          await convex.mutation('dashboard:createTask', { title, priority, category: category || undefined });
+          await loadTasks();
+        } else {
+          tasks.unshift({
+            id: Date.now().toString(),
+            title,
+            status: 'pending',
+            priority,
+            category: category || undefined,
+            createdAt: Date.now()
+          });
+          saveLocalData();
+          renderTasks();
+        }
+        document.getElementById('new-task-title').value = '';
+        document.getElementById('new-task-category').value = '';
+        log('Task added: ' + title, 'out');
+      } catch (err) {
+        log('Failed to add task: ' + err.message, 'err');
+      }
+    }
+
+    async function setStatus(id, status) {
+      try {
+        if (convex) {
+          await convex.mutation('dashboard:updateTask', { id, status });
+          await loadTasks();
+        } else {
+          const task = tasks.find(t => (t._id || t.id) === id);
+          if (task) task.status = status;
+          saveLocalData();
+          renderTasks();
+        }
+        log(`Task status set to ${status}`, 'out');
+      } catch (err) {
+        log('Failed to update task: ' + err.message, 'err');
+      }
+    }
+
+    async function deleteTask(id) {
+      try {
+        if (convex) {
+          await convex.mutation('dashboard:deleteTask', { id });
+          await loadTasks();
+        } else {
+          tasks = tasks.filter(t => (t._id || t.id) !== id);
+          saveLocalData();
+          renderTasks();
+        }
+        log('Task deleted', 'out');
+      } catch (err) {
+        log('Failed to delete task: ' + err.message, 'err');
+      }
+    }
+
+    function filterTasks(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      });
+      renderTasks();
+    }
+
+    // Instances
+    async function loadInstances() {
+      try {
+        if (convex) {
+          instances = await convex.query('dashboard:listInstances', {});
+        }
+        renderInstances();
+      } catch (err) {
+        log('Failed to load instances: ' + err.message, 'err');
+      }
+    }
+
+    function renderInstances() {
+      const container = document.getElementById('instances');
+
+      if (instances.length === 0) {
+        container.innerHTML = '<div class="empty-state">No instances registered</div>';
+        return;
+      }
+
+      container.innerHTML = instances.map(inst => `
+        <div class="instance ${inst.status}">
+          <div class="instance-header">
+            <span class="instance-name">${inst.name}</span>
+            <span class="instance-status">${inst.status}</span>
+          </div>
+          <div class="instance-stats">
+            ${inst.pid ? 'PID: ' + inst.pid + ' | ' : ''}
+            ${inst.ramUsage ? 'RAM: ' + inst.ramUsage + 'MB | ' : ''}
+            Last seen: ${new Date(inst.lastHeartbeat).toLocaleTimeString()}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function registerInstance() {
+      const name = document.getElementById('instance-name').value.trim();
+      if (!name) return;
+
+      try {
+        if (convex) {
+          await convex.mutation('dashboard:registerInstance', { name });
+          await loadInstances();
+        } else {
+          instances.push({
+            id: Date.now().toString(),
+            name,
+            status: 'active',
+            lastHeartbeat: Date.now(),
+            startedAt: Date.now()
+          });
+          saveLocalData();
+          renderInstances();
+        }
+        document.getElementById('instance-name').value = '';
+        log('Instance registered: ' + name, 'out');
+      } catch (err) {
+        log('Failed to register instance: ' + err.message, 'err');
+      }
+    }
+
+    // Commands
+    function runCommand() {
+      const input = document.getElementById('command-input');
+      const cmd = input.value.trim();
+      if (!cmd) return;
+
+      log('> ' + cmd, 'cmd');
+
+      // Parse and execute
+      if (cmd.startsWith('click')) {
+        log('Executed click at ' + cmd.split(' ')[1], 'out');
+      } else if (cmd.startsWith('type')) {
+        log('Typed text', 'out');
+      } else if (cmd === 'screenshot') {
+        log('Screenshot captured', 'out');
+      } else if (cmd.startsWith('scroll')) {
+        log('Scrolled ' + cmd.split(' ')[1] + 'px', 'out');
+      } else if (cmd.startsWith('press')) {
+        log('Pressed ' + cmd.split(' ')[1], 'out');
+      } else {
+        log('Unknown command', 'err');
+      }
+
+      input.value = '';
+    }
+
+    function quickCmd(cmd) {
+      document.getElementById('command-input').value = cmd;
+      runCommand();
+    }
+
+    // Keyboard shortcuts
+    document.getElementById('command-input').addEventListener('keypress', e => { if (e.key === 'Enter') runCommand(); });
+    document.getElementById('new-task-title').addEventListener('keypress', e => { if (e.key === 'Enter') addTask(); });
+
+    // Init
+    initConvex();
+  </script>
+</body>
+</html>

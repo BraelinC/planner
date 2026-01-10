@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Command Page</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #00d9ff; margin-bottom: 20px; }
+    .status {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .status-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; }
+    .status-item:last-child { border-bottom: none; }
+    .label { color: #888; }
+    .value { color: #00d9ff; font-weight: bold; }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #0f3460;
+      color: #fff;
+      border: 2px solid #00d9ff;
+      padding: 15px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    button:hover { background: #00d9ff; color: #1a1a2e; }
+    button:active { transform: scale(0.98); }
+    .log {
+      background: #0f0f23;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 13px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log-entry { padding: 4px 0; border-bottom: 1px solid #222; }
+    .log-entry.success { color: #4ade80; }
+    .log-entry.error { color: #f87171; }
+    .log-entry.info { color: #60a5fa; }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      background: #16213e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    input:focus { outline: none; border-color: #00d9ff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Claude Command Center</h1>
+
+    <div class="status">
+      <div class="status-item">
+        <span class="label">Status</span>
+        <span class="value" id="status">Ready</span>
+      </div>
+      <div class="status-item">
+        <span class="label">Last Action</span>
+        <span class="value" id="last-action">None</span>
+      </div>
+      <div class="status-item">
+        <span class="label">Time</span>
+        <span class="value" id="time">--:--:--</span>
+      </div>
+    </div>
+
+    <input type="text" id="command-input" placeholder="Type a command or message..." />
+
+    <div class="actions">
+      <button onclick="action('navigate')">Navigate</button>
+      <button onclick="action('click')">Click Test</button>
+      <button onclick="action('screenshot')">Screenshot</button>
+      <button onclick="action('clear')">Clear Log</button>
+      <button onclick="action('ping')">Ping</button>
+      <button onclick="action('hello')">Say Hello</button>
+    </div>
+
+    <div class="log" id="log">
+      <div class="log-entry info">System initialized. Ready for commands.</div>
+    </div>
+  </div>
+
+  <script>
+    function updateTime() {
+      document.getElementById('time').textContent = new Date().toLocaleTimeString();
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry ' + type;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function action(name) {
+      document.getElementById('last-action').textContent = name;
+      document.getElementById('status').textContent = 'Processing...';
+
+      switch(name) {
+        case 'navigate':
+          const url = document.getElementById('command-input').value || 'https://example.com';
+          log('Navigating to: ' + url, 'info');
+          break;
+        case 'click':
+          log('Click action executed', 'success');
+          break;
+        case 'screenshot':
+          log('Screenshot requested', 'info');
+          break;
+        case 'clear':
+          document.getElementById('log').innerHTML = '<div class="log-entry info">Log cleared.</div>';
+          break;
+        case 'ping':
+          log('Pong! Server is responsive.', 'success');
+          break;
+        case 'hello':
+          log('Hello Claude! Ready to receive commands.', 'success');
+          break;
+        default:
+          log('Unknown action: ' + name, 'error');
+      }
+
+      setTimeout(() => {
+        document.getElementById('status').textContent = 'Ready';
+      }, 500);
+    }
+
+    document.getElementById('command-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const cmd = e.target.value;
+        log('Command received: ' + cmd, 'info');
+        e.target.value = '';
+      }
+    });
+  </script>
+</body>
+</html>

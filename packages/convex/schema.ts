@@ -52,4 +52,43 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_completed", ["userId", "completed"]),
+
+  // Claude Dashboard - Tasks
+  claudeTasks: defineTable({
+    title: v.string(),
+    status: v.union(v.literal("pending"), v.literal("in_progress"), v.literal("completed")),
+    priority: v.union(v.literal("high"), v.literal("medium"), v.literal("low")),
+    category: v.optional(v.string()),
+    description: v.optional(v.string()),
+    createdBy: v.optional(v.string()), // instance name that created it
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_priority", ["priority"])
+    .index("by_category", ["category"]),
+
+  // Claude Dashboard - Instances
+  claudeInstances: defineTable({
+    name: v.string(),
+    pid: v.optional(v.number()),
+    status: v.union(v.literal("active"), v.literal("idle"), v.literal("offline")),
+    ramUsage: v.optional(v.number()), // MB
+    lastHeartbeat: v.number(),
+    startedAt: v.number(),
+    metadata: v.optional(v.string()), // JSON string for extra data
+  })
+    .index("by_name", ["name"])
+    .index("by_status", ["status"]),
+
+  // Claude Dashboard - Command Log
+  claudeCommands: defineTable({
+    instanceName: v.string(),
+    command: v.string(),
+    output: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("error")),
+    createdAt: v.number(),
+  })
+    .index("by_instance", ["instanceName"])
+    .index("by_status", ["status"]),
 });
