@@ -11,9 +11,11 @@
 import type * as agent from "../agent.js";
 import type * as agentHelpers from "../agentHelpers.js";
 import type * as ai from "../ai.js";
+import type * as dashboard from "../dashboard.js";
 import type * as debugClerk from "../debugClerk.js";
 import type * as events from "../events.js";
 import type * as googleCalendar from "../googleCalendar.js";
+import type * as http from "../http.js";
 import type * as todos from "../todos.js";
 import type * as users from "../users.js";
 
@@ -27,9 +29,11 @@ declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agentHelpers: typeof agentHelpers;
   ai: typeof ai;
+  dashboard: typeof dashboard;
   debugClerk: typeof debugClerk;
   events: typeof events;
   googleCalendar: typeof googleCalendar;
+  http: typeof http;
   todos: typeof todos;
   users: typeof users;
 }>;

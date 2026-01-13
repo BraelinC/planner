@@ -205,3 +205,34 @@ export const updateCommand = mutation({
     });
   },
 });
+
+// ============ USER TODOS (for HTTP API) ============
+
+export const createUserTodo = mutation({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    return await ctx.db.insert("todos", {
+      userId: args.userId,
+      title: args.title,
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const listUserTodos = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("todos")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+  },
+});

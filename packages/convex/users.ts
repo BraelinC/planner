@@ -1,6 +1,35 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// Get user by Clerk user ID (for HTTP API access)
+export const getUserByClerkId = query({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    // Try exact match first
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", args.clerkUserId))
+      .first();
+
+    // If not found, try with common Clerk prefix formats
+    if (!user) {
+      // Clerk sometimes stores as "https://domain|user_xxx"
+      const users = await ctx.db.query("users").collect();
+      user = users.find(u => u.tokenIdentifier.includes(args.clerkUserId)) || null;
+    }
+
+    return user;
+  },
+});
+
+// List all users (debug endpoint)
+export const listAllUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").collect();
+  },
+});
+
 // Get current authenticated user
 export const getCurrentUser = query({
   args: {},

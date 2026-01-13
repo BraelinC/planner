@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@healthymama/convex";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -11,31 +13,22 @@ import {
   Bot,
   ListTodo,
 } from "lucide-react";
+import type { Id } from "@healthymama/convex/dataModel";
 
 type TaskStatus = "pending" | "in_progress" | "completed";
 type Priority = "high" | "medium" | "low";
 
-interface Task {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  priority: Priority;
-  category?: string;
-  createdBy?: string;
-  createdAt: number;
-}
-
-interface Instance {
-  id: string;
-  name: string;
-  status: "active" | "idle" | "offline";
-  ramUsage?: number;
-  lastHeartbeat: number;
-}
-
 export default function ClaudeDashboard() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [instances, setInstances] = useState<Instance[]>([]);
+  // Fetch from Convex
+  const tasks = useQuery(api.dashboard.listTasks, {}) ?? [];
+  const instances = useQuery(api.dashboard.listInstances, {}) ?? [];
+
+  // Mutations
+  const createTask = useMutation(api.dashboard.createTask);
+  const updateTask = useMutation(api.dashboard.updateTask);
+  const deleteTaskMutation = useMutation(api.dashboard.deleteTask);
+  const registerInstanceMutation = useMutation(api.dashboard.registerInstance);
+
   const [filter, setFilter] = useState<"all" | TaskStatus>("all");
   const [newTask, setNewTask] = useState("");
   const [newPriority, setNewPriority] = useState<Priority>("medium");
@@ -46,23 +39,6 @@ export default function ClaudeDashboard() {
   ]);
   const [instanceName, setInstanceName] = useState("");
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const savedTasks = localStorage.getItem("claude-tasks");
-    const savedInstances = localStorage.getItem("claude-instances");
-    if (savedTasks) setTasks(JSON.parse(savedTasks));
-    if (savedInstances) setInstances(JSON.parse(savedInstances));
-  }, []);
-
-  // Save to localStorage on change
-  useEffect(() => {
-    localStorage.setItem("claude-tasks", JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem("claude-instances", JSON.stringify(instances));
-  }, [instances]);
-
   const log = (message: string, type = "out") => {
     setLogs((prev) => [
       ...prev.slice(-50),
@@ -70,45 +46,52 @@ export default function ClaudeDashboard() {
     ]);
   };
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTask.trim()) return;
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask.trim(),
-      status: "pending",
-      priority: newPriority,
-      category: newCategory || undefined,
-      createdAt: Date.now(),
-    };
-    setTasks((prev) => [task, ...prev]);
-    setNewTask("");
-    setNewCategory("");
-    log(`Task added: ${task.title}`, "out");
+    try {
+      await createTask({
+        title: newTask.trim(),
+        priority: newPriority,
+        category: newCategory || undefined,
+        createdBy: "dashboard",
+      });
+      setNewTask("");
+      setNewCategory("");
+      log(`Task added: ${newTask.trim()}`, "out");
+    } catch (e) {
+      log(`Error adding task: ${e}`, "err");
+    }
   };
 
-  const setTaskStatus = (id: string, status: TaskStatus) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status } : t))
-    );
-    log(`Task status updated to ${status}`, "out");
+  const setTaskStatus = async (id: Id<"claudeTasks">, status: TaskStatus) => {
+    try {
+      await updateTask({ id, status });
+      log(`Task status updated to ${status}`, "out");
+    } catch (e) {
+      log(`Error updating task: ${e}`, "err");
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    log("Task deleted", "out");
+  const deleteTask = async (id: Id<"claudeTasks">) => {
+    try {
+      await deleteTaskMutation({ id });
+      log("Task deleted", "out");
+    } catch (e) {
+      log(`Error deleting task: ${e}`, "err");
+    }
   };
 
-  const registerInstance = () => {
+  const registerInstance = async () => {
     if (!instanceName.trim()) return;
-    const instance: Instance = {
-      id: Date.now().toString(),
-      name: instanceName.trim(),
-      status: "active",
-      lastHeartbeat: Date.now(),
-    };
-    setInstances((prev) => [...prev, instance]);
-    setInstanceName("");
-    log(`Instance registered: ${instance.name}`, "out");
+    try {
+      await registerInstanceMutation({
+        name: instanceName.trim(),
+      });
+      setInstanceName("");
+      log(`Instance registered: ${instanceName.trim()}`, "out");
+    } catch (e) {
+      log(`Error registering instance: ${e}`, "err");
+    }
   };
 
   const runCommand = () => {
@@ -132,7 +115,7 @@ export default function ClaudeDashboard() {
   };
 
   const filteredTasks =
-    filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
+    filter === "all" ? tasks : tasks.filter((t: any) => t.status === filter);
 
   const priorityColors = {
     high: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -174,7 +157,7 @@ export default function ClaudeDashboard() {
             ) : (
               instances.map((inst) => (
                 <div
-                  key={inst.id}
+                  key={inst._id}
                   className={cn(
                     "bg-slate-800/50 rounded-lg p-3 border-l-2",
                     inst.status === "active"
@@ -375,7 +358,7 @@ export default function ClaudeDashboard() {
             ) : (
               filteredTasks.map((task) => (
                 <div
-                  key={task.id}
+                  key={task._id}
                   className={cn(
                     "bg-slate-800/50 rounded-lg p-4 border-l-4",
                     statusColors[task.status],
@@ -415,7 +398,7 @@ export default function ClaudeDashboard() {
                       variant="outline"
                       size="sm"
                       className="h-7 px-2 border-slate-600 text-slate-400"
-                      onClick={() => setTaskStatus(task.id, "pending")}
+                      onClick={() => setTaskStatus(task._id, "pending")}
                     >
                       <Pause className="h-3 w-3 mr-1" /> Pending
                     </Button>
@@ -423,7 +406,7 @@ export default function ClaudeDashboard() {
                       variant="outline"
                       size="sm"
                       className="h-7 px-2 border-slate-600 text-slate-400"
-                      onClick={() => setTaskStatus(task.id, "in_progress")}
+                      onClick={() => setTaskStatus(task._id, "in_progress")}
                     >
                       <Play className="h-3 w-3 mr-1" /> Start
                     </Button>
@@ -431,7 +414,7 @@ export default function ClaudeDashboard() {
                       variant="outline"
                       size="sm"
                       className="h-7 px-2 border-slate-600 text-slate-400"
-                      onClick={() => setTaskStatus(task.id, "completed")}
+                      onClick={() => setTaskStatus(task._id, "completed")}
                     >
                       <Check className="h-3 w-3 mr-1" /> Done
                     </Button>
@@ -439,7 +422,7 @@ export default function ClaudeDashboard() {
                       variant="outline"
                       size="sm"
                       className="h-7 px-2 border-red-500/30 text-red-400 hover:bg-red-500/20"
-                      onClick={() => deleteTask(task.id)}
+                      onClick={() => deleteTask(task._id)}
                     >
                       <X className="h-3 w-3" />
                     </Button>
