@@ -16,6 +16,7 @@ import type * as debugClerk from "../debugClerk.js";
 import type * as events from "../events.js";
 import type * as googleCalendar from "../googleCalendar.js";
 import type * as http from "../http.js";
+import type * as pastedImages from "../pastedImages.js";
 import type * as todos from "../todos.js";
 import type * as users from "../users.js";
 
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   googleCalendar: typeof googleCalendar;
   http: typeof http;
+  pastedImages: typeof pastedImages;
   todos: typeof todos;
   users: typeof users;
 }>;

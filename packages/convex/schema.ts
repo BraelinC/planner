@@ -91,4 +91,17 @@ export default defineSchema({
   })
     .index("by_instance", ["instanceName"])
     .index("by_status", ["status"]),
+
+  // VNC Pasted Images - for syncing images from phone to VNC sessions
+  pastedImages: defineTable({
+    vncSession: v.string(), // e.g., "claude1", "claude2", etc.
+    fileName: v.string(), // original or generated filename
+    storageId: v.id("_storage"), // Convex file storage ID
+    mimeType: v.string(), // e.g., "image/png", "image/jpeg"
+    size: v.number(), // file size in bytes
+    uploadedAt: v.number(), // timestamp
+    syncedAt: v.optional(v.number()), // when it was synced to local folder
+  })
+    .index("by_session", ["vncSession"])
+    .index("by_session_time", ["vncSession", "uploadedAt"]),
 });
